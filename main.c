@@ -83,7 +83,7 @@ int get_dm_friendly_name()
 
 
 int main() {
-  printf("olis world!\n");
+  printf("Smart Local Networks application start!\n");
 
   // configure amx connection
   config_api_init();
