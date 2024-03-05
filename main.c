@@ -134,7 +134,8 @@ int get_wifi_radio_stats(){
 
 int write_to_file(){
 
-
+  /*Define file */
+  FILE *fp;
   /*Define file name*/
   char file_name[] = "/data/test.txt";
   /*Define string to append*/
