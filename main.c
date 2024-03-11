@@ -10,18 +10,29 @@
 #include <amxd/amxd_dm.h>
 #include <amxd/amxd_object.h>
 
+#include "radio_stats.c"
+#include "data_object.c"
+#include "results.c"
 
 // usp endpoint to communicate with the host
 #define DM_SOCK_URI_ENDPOINT "usp:/var/run/usp/endpoint_agent_path"
 // amxb module to discuss in usp
 #define DM_BACKEND_USP    "/usr/bin/mods/amxb/mod-amxb-usp.so"
 
-// key of datamodel to search
-#define DM_DEVICE_KEY  "DeviceInfo."
 
 // global bus variable
 static amxb_bus_ctx_t *bus_ctx_usp = NULL;
 
+static int app_check_args(int argc, char* argv[]) {
+    int retval = 0;
+
+    if(argc < 1) {
+        printf("\n\nInvalid number of arguments\n");
+        retval = 1;
+    }
+
+    return retval;
+}
 
 int config_api_init() {
     // arg use to pass command option to amxrt
@@ -49,48 +60,49 @@ int config_api_init() {
 }
 
 
-int get_dm_friendly_name()
-{
-  amxc_var_t results;
-
-  // init variable
-  amxc_var_init(&results);
-
-  // get datamodel key from usp endpoint
-  int rv = amxb_get(bus_ctx_usp, DM_DEVICE_KEY, 0, &results, 1);
-  if(rv != 0) {
-      printf("CONFIG DM: failed to get config");
-      amxc_var_clean(&results);
-      return -1;
-  }
-  // dump all datamodel info under the key for debug
-  // amxc_var_dump(&results, STDOUT_FILENO);
-
-  // helper to iterate on result object
-  amxc_var_for_each(var, &results) {
-    // get the datamodel
-    amxc_var_t* objectvar = GET_ARG(var, DM_DEVICE_KEY);
-    // get the friendlyname value
-    const char* val = GET_CHAR(objectvar, "FriendlyName");
-    // print the value
-    printf(val);
-    printf("\n");
-  }
-  // release the object result
-  amxc_var_clean(&results);
-  return 0;
-}
-
-
-int main() {
+int main(int argc, char* argv[]) {
   printf("Smart Local Networks application start!\n");
+  int retval = 0;
+  retval = app_check_args(argc, argv);
+  if (retval != 0) {
+      goto leave;
+  }
 
   // configure amx connection
   config_api_init();
-  // get the FriendlyName from host
-  get_dm_friendly_name();
 
-  // clean amxrt configuration
-  amxrt_delete();
-  return 0;
+  if(strcmp(argv[1],"get-data") == 0){    
+    retval = get_data_object(bus_ctx_usp, argv[2]);
+    if (retval == 0) {
+        goto leave;
+    }
+  }
+  
+  if(strcmp(argv[1],"append-to-file") == 0){  
+    retval = append_to_file(argv[2]);
+    if (retval == 0) {
+        goto leave;
+    }
+  }
+
+  if(strcmp(argv[1],"get-radio-stats") == 0){  
+    retval = get_radio_stats(bus_ctx_usp);
+    if (retval == 0) {
+        goto leave;
+    }
+  }
+
+  if(strcmp(argv[1],"get-radio-air-stats") == 0){  
+    retval = get_radio_air_stats(bus_ctx_usp);
+    if (retval == 0) {
+        goto leave;
+    }
+  }
+
+  leave:
+    // clean amxrt configuration
+    amxrt_delete();
+    amxb_be_remove_all();
+    return retval;
+  
 }
