@@ -39,6 +39,7 @@ int get_radio_air_stats(amxb_bus_ctx_t *bus_ctx_usp){
 
     /*Print returned values for debug*/
     amxc_var_dump(&ret, STDOUT_FILENO);
+    //amxc_var_dump(&ret, fp);
 
     /*Clean vars*/
     amxb_free_invoke(&invoke_ctx);
