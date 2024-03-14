@@ -3,15 +3,12 @@
 #include <string.h>
 #include <stdlib.h>
 
-// usp endpoint to communicate with the host
-#define RADIO_STATS_RESULTS_FILE "radio_stats_result.txt"
-
-int append_to_file(const char* str_to_append){
-  printf("Appending data to file: %s\n", RADIO_STATS_RESULTS_FILE);
+int append_to_file(const char* str_to_append, const char* results_file){
+  printf("Appending data to file: %s\n", results_file);
   FILE *fp;
   int wb_retval = 0;
   /*Opening the file in appending mode...*/
-  fp = fopen(RADIO_STATS_RESULTS_FILE, "a+");
+  fp = fopen(results_file, "a+");
   
   /*File open operation failed.*/
   if (fp == NULL) {
