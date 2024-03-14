@@ -12,7 +12,6 @@
 
 #include "radio_stats.c"
 #include "data_object.c"
-#include "results.c"
 
 // usp endpoint to communicate with the host
 #define DM_SOCK_URI_ENDPOINT "usp:/var/run/usp/endpoint_agent_path"
@@ -77,23 +76,9 @@ int main(int argc, char* argv[]) {
         goto leave;
     }
   }
-  
-  if(strcmp(argv[1],"append-to-file") == 0){  
-    retval = append_to_file(argv[2]);
-    if (retval == 0) {
-        goto leave;
-    }
-  }
 
   if(strcmp(argv[1],"get-radio-stats") == 0){  
     retval = get_radio_stats(bus_ctx_usp);
-    if (retval == 0) {
-        goto leave;
-    }
-  }
-
-  if(strcmp(argv[1],"get-radio-air-stats") == 0){  
-    retval = get_radio_air_stats(bus_ctx_usp);
     if (retval == 0) {
         goto leave;
     }
