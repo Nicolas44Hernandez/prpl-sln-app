@@ -11,6 +11,7 @@
 #include <amxd/amxd_object.h>
 
 #include "radio_stats.c"
+#include "connected_stations.c"
 #include "data_object.c"
 
 // usp endpoint to communicate with the host
@@ -29,7 +30,6 @@ static int app_check_args(int argc, char* argv[]) {
         printf("\n\nInvalid number of arguments\n");
         retval = 1;
     }
-
     return retval;
 }
 
@@ -83,6 +83,13 @@ int main(int argc, char* argv[]) {
         goto leave;
     }
   }
+
+  if(strcmp(argv[1],"get-connected-stations") == 0){  
+    retval = get_connected_stations(bus_ctx_usp);
+    if (retval == 0) {
+        goto leave;
+    }
+  }  
 
   leave:
     // clean amxrt configuration

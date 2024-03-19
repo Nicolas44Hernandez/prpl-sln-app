@@ -126,9 +126,10 @@ int get_radio_stats(amxb_bus_ctx_t *bus_ctx_usp){
 
         
         /*Append end char*/
-        char *end_str = "}";
-        strcat(stats_str, end_str);
-        printf("STATS TO PRINT: %s \n", stats_str);
+        strcat(stats_str, "}\n");
+
+        /*Print stats values for debug*/
+        //printf("STATS TO PRINT: %s \n", stats_str);
 
         /*Append to results file*/
         retval = append_to_file(stats_str, result_files_arr[i]);
