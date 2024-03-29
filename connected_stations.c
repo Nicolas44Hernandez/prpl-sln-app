@@ -14,218 +14,185 @@
 #define BUFF_SIZE 10000
 #define BUFF_CONNETED_STATIONS_SIZE 100
 
-int connected_stations_2GHz;
-int connected_stations_5GHz;
-int connected_stations_6GHz;
+int total_connected_stations;
+uintmax_t last_sample_timestamp;
 
 #define CONNECTED_STATIONS_RESULTS_FILE "connected_stations_result.txt"
 
-int count_active_stations(const char *stations_str){
-    const char *needle = "Active:true";
-    int count = 0;
-    const char *tmp = stations_str;
-    while(tmp = strstr(tmp, needle))
-    {   
-        count++;
-        tmp++;
+#define MAX_NB_CONNECTED_STATIONS 20
+
+struct station
+{   
+    char* mac;
+    int32_t last_sample_tx_bytes;
+    int32_t last_sample_rx_bytes;
+    uint32_t signal_strength;
+    char* band;
+};
+
+struct station connected_stations_list[MAX_NB_CONNECTED_STATIONS];
+
+void init_stations_counters(){
+    /*Init countesrs variables*/
+    total_connected_stations = 0;
+    for(int i = 0; i< MAX_NB_CONNECTED_STATIONS; i++){
+        connected_stations_list[i].mac = malloc(20);
+        connected_stations_list[i].band = malloc(20);
+        strcpy(connected_stations_list[i].mac, "");
+        strcpy(connected_stations_list[i].band, "");
+        connected_stations_list[i].last_sample_tx_bytes = -1;
+        connected_stations_list[i].last_sample_rx_bytes = -1;
+        connected_stations_list[i].signal_strength = -1;
     }
-    return count;
+    return 0;  
 }
 
-int count_nb_stations(const char *stations_str){
-    const char *needle = "MACAddress:";
-    int count = 0;
-    const char *tmp = stations_str;
-    while(tmp = strstr(tmp, needle))
-    {   
-        count++;
-        tmp++;
-    }
-    return count;
+
+void reset_station_counters(int station_nb){
+    /*Reset countes for station */    
+    strcpy(connected_stations_list[station_nb].mac, "");
+    strcpy(connected_stations_list[station_nb].band, "");
+    connected_stations_list[station_nb].last_sample_tx_bytes = -1;
+    connected_stations_list[station_nb].last_sample_rx_bytes = -1;
+    connected_stations_list[station_nb].signal_strength = -1;   
+    
+    /* Decrement connected stations counter*/
+    total_connected_stations -= 1;     
+    return 0;  
 }
 
-int dump_results_for_single_station(
-    const char* station, 
-    const char* band, 
-    const char *timestmp
-){  
 
-    /*Variables*/
-    char station_str[BUFF_SIZE];
-    station_str[0] =  '\0';
-    int retval = 0;
+void update_station(char* mac_address, int32_t rx_bytes, int32_t tx_bytes, int32_t signal_strength, char* band ){
+    /*Update station atributes or create if not pressent*/
+    // printf("*****Updating station - MACAddress:%s  RxBytes:%d   TxBytes:%d SignalStrength:%d\n", 
+    //     mac_address, 
+    //     rx_bytes, 
+    //     tx_bytes,
+    //     signal_strength
+    // ); 
 
-    /*Append timestamp header*/
-    char *ts_header = "{timestamp:";
-    strcat(station_str, ts_header);
-    strcat(station_str, timestmp);
-
-    /*Append band*/ 
-    char *band_header = "band:";
-    strcat(station_str, band_header);
-    strcat(station_str, band);
-    strcat(station_str, ",");
-
-
-    /*Append station*/ 
-    strcat(station_str, station);
-
-    /*Append end char*/
-    strcat(station_str, "}\n");
-
-    /*Extract station MAC address*/
-    const char *needle = "MACAddress:";
-    char station_mac[30];
-    station_mac[0] =  '\0';
-    char *station_tmp = station;
-    while(station_tmp = strstr(station_tmp, needle))
-    {      
-        station_tmp=station_tmp+11;
-        station_tmp[17] =  '\0';        
-        strcat(station_mac, station_tmp);
-        break;
-    }
-
-    /*Use MAC to construct station result file name*/
-    for(int i = 2; i<16; i=i+3){
-        station_mac[i] =  '_'; 
-    }
-    char station_stats_result_file[40];
-    station_stats_result_file[0] =  '\0';
-    strcat(station_stats_result_file, "station_");
-    strcat(station_stats_result_file, station_mac);
-    strcat(station_stats_result_file, ".txt");
-    printf("RESULTS FOR STATION IN: %s \n", station_stats_result_file);
-
-    /*Append station to results file*/    
-    retval = append_to_file(station_str, station_stats_result_file);
-    if (retval == 0) {
-        printf("Error when writting to file\n");
-    }
-
-    /*Print station results for debug*/
-    //printf("STATION TO APPEND TO FILE: %s \n\n\n", station_str);
-
-    return 0;
-}
-
-int dump_connected_stations_nb(const char *timestmp){
-    int total_connected_stations = connected_stations_2GHz + connected_stations_5GHz + connected_stations_6GHz;
-    printf("Conneted stations - Total:%d,2.4GHZ:%d,5GHz:%d,6GHz:%d\n", total_connected_stations,connected_stations_2GHz,connected_stations_5GHz, connected_stations_6GHz);
-        
-    /*Variables*/
-    char connected_stations_str[BUFF_CONNETED_STATIONS_SIZE];
-    connected_stations_str[0] =  '\0';
-
-    /*Append timestamp header*/
-    char *ts_header = "{timestamp:";
-    strcat(connected_stations_str, ts_header);
-    strcat(connected_stations_str, timestmp);
-
-    /*Append connected statios info*/
-    char entry[50];
-    snprintf(entry, sizeof entry, "Total:%d,2.4GHZ:%d,5GHz:%d,6GHz:%d", total_connected_stations,connected_stations_2GHz,connected_stations_5GHz, connected_stations_6GHz);
-    strcat(connected_stations_str, entry);
-    
-    /*Append end char*/
-    strcat(connected_stations_str, "}\n");
-
-    /*Append station to results file*/    
-    int retval = append_to_file(connected_stations_str, CONNECTED_STATIONS_RESULTS_FILE);
-    if (retval == 0) {
-        printf("Error when writting to file\n");
-        return -1;
-    }
-
-    return 0;
-}
-
-int dump_connected_stations_results(const char* stations_str, const char* band, const char *timestmp){
-    
-    /*Variables*/
-    char connected_stations_str[BUFF_SIZE];
-    connected_stations_str[0] =  '\0';
-
-    /*Append timestamp header*/
-    char *ts_header = "{timestamp:";
-    strcat(connected_stations_str, ts_header);
-    strcat(connected_stations_str, timestmp); 
-    
-    /* Get number of stations*/
-    int nb_active_stations = count_active_stations(stations_str);
-    int nb_stations_in_list = count_nb_stations(stations_str);
-    if(!strcmp(band,"2.4GHz")){
-        connected_stations_2GHz = nb_active_stations;
-    }
-    if(!strcmp(band,"5GHz")){
-        connected_stations_5GHz = nb_active_stations;
-    }
-    if(!strcmp(band,"6GHz")){
-        connected_stations_6GHz = nb_active_stations;
-    }
-
-    printf(
-        "UPDATED SATIONS NB -   2.4GHz:%d    5GHz:%d   6GHz:%d \n", 
-        connected_stations_2GHz, 
-        connected_stations_5GHz, 
-        connected_stations_6GHz
-    );  
-
-    /*loop over stations*/
-    const char *needle = "AuthenticationState";
-    char *station_tmp = stations_str;
-    
-    //printf("ALL THE STATIONS: %s \n\n\n", stations_str);
-    int stations_done = 0;
-    while(stations_done<nb_stations_in_list){
-        int current_total_len = strlen(station_tmp);
-
-        char last_station_str[BUFF_SIZE];
-        last_station_str[0] =  '\0';
-
-        while(station_tmp = strstr(station_tmp, needle))
-        {      
-            last_station_str[0] =  '\0';
-            strcat(last_station_str, station_tmp);
-            station_tmp++;
+    /* Iterate over active stations list to find station*/
+    for(int i =0; i < MAX_NB_CONNECTED_STATIONS; i++){
+        /* Check if station is not empty*/
+        if( strcmp(connected_stations_list[i].mac, "") !=  0 ){
+            /* Check if station is not empty*/
+            if( strcmp(connected_stations_list[i].mac, mac_address) ==  0 ){
+                //printf("The station is already present in active stations list, updating counters...\n");
+                connected_stations_list[i].last_sample_tx_bytes = tx_bytes;
+                connected_stations_list[i].last_sample_rx_bytes = rx_bytes;
+                connected_stations_list[i].signal_strength = signal_strength;
+                strcpy(connected_stations_list[i].band, band); 
+                return 0;
+            } 
         }
-                
-        /*Get current station len*/
-        int station_str_len;
-        station_str_len = strlen(last_station_str);
-
-        /*Calculate new len*/
-        int new_len;
-        new_len = current_total_len - station_str_len;
-        
-        /*Get new pointer*/
-        if(stations_done<nb_stations_in_list){
-            station_tmp = stations_str;
-            station_tmp[new_len-1] = '\0';
-        }
-
-        /*Increment statios done*/
-        stations_done++;
-
-        /*Dump results for station*/
-        dump_results_for_single_station(last_station_str, band, timestmp); 
     }
-        
-    return 0;
+
+    /*Create station in active stations list*/
+    //printf("Appendig station to active stations list...\n");
+    for(int i =0; i < MAX_NB_CONNECTED_STATIONS; i++){
+        /*If station is empty overwrite*/
+        if( strcmp(connected_stations_list[i].mac, "") ==  0 ){
+            strcpy(connected_stations_list[i].mac, mac_address);
+            connected_stations_list[i].last_sample_tx_bytes = tx_bytes;
+            connected_stations_list[i].last_sample_rx_bytes = rx_bytes;
+            connected_stations_list[i].signal_strength = signal_strength;
+            strcpy(connected_stations_list[i].band, band); 
+            total_connected_stations += 1;
+            return 0;
+        }
+    }    
+
+    /*Error ?*/
+    return -1;
 }
 
-int get_connected_stations(amxb_bus_ctx_t *bus_ctx_usp){
+
+void print_stations_list(){
+    /*Loop over connected stations*/
+    printf("-----Connected stations list: \n");
+    for(int i =0; i < MAX_NB_CONNECTED_STATIONS; i++){
+        if( strcmp(connected_stations_list[i].mac, "") !=  0 ){
+            printf("STATION: MACAddress:%s  RxBytes:%d   TxBytes:%d   SignalStrength:%d   Band:%s\n",
+                connected_stations_list[i].mac,
+                connected_stations_list[i].last_sample_rx_bytes,
+                connected_stations_list[i].last_sample_tx_bytes,
+                connected_stations_list[i].signal_strength,
+                connected_stations_list[i].band
+            );
+        }        
+    } 
+}
+
+
+void update_connected_stations_list(amxc_var_t * var, char* band){
+    /*Iterate over station list*/
+    amxc_var_for_each(station, var) {
+        char* mac_address = GET_CHAR(station, "MACAddress");
+        int32_t rx_bytes = GET_INT32(station, "RxBytes");
+        int32_t tx_bytes = GET_INT32(station, "TxBytes");
+        int32_t signal_strength = GET_INT32(station, "SignalStrength");
+        bool active = GET_BOOL(station, "Active");
+        if(active){
+            /*Update or append station counters*/
+            update_station(mac_address, rx_bytes, tx_bytes, signal_strength, band);
+        }        
+    }
+}
+
+void purge_inactive_stations(amxc_var_t * var, char* band){
+    /*Purge stations from active stations list if not present in sample*/
+    //printf("Purging inactive stations from list\n");
+
+    int stations_to_delete_idx[MAX_NB_CONNECTED_STATIONS];
+    int nb_of_stations_to_delete = 0;
+
+    /*Iterate over acive stations list*/
+    for(int i =0; i < MAX_NB_CONNECTED_STATIONS; i++){
+        if( (strcmp(connected_stations_list[i].mac, "") !=  0) && strcmp(connected_stations_list[i].band, band) ==  0 ){
+            //printf("Checking if station idx %d mac: %s is currently active\n", i, connected_stations_list[i].mac);
+
+            /*Iterate over stations list in current sample*/
+            bool station_in_sample = false;
+            amxc_var_for_each(station, var) {
+                char* mac_address = GET_CHAR(station, "MACAddress");
+                bool active = GET_BOOL(station, "Active");
+                /*Validate if station is active */
+                if(active){
+                    if( strcmp(connected_stations_list[i].mac, mac_address) ==  0 ){
+                        //printf("The station is present in sample\n");
+                        station_in_sample = true;
+                    } 
+                }
+            }
+            if(!station_in_sample){
+                stations_to_delete_idx[nb_of_stations_to_delete] = i;
+                nb_of_stations_to_delete ++;
+            }        
+        }       
+    }
+
+    // printf("Stations to delete [");
+    // for(int i =0; i < nb_of_stations_to_delete; i++){ 
+    //     printf("%d,", stations_to_delete_idx[i]);
+    // }
+    // printf("]\n");
+
+    /*Remove stations to delete from list*/
+    for(int i =0; i < nb_of_stations_to_delete; i++){ 
+        reset_station_counters(stations_to_delete_idx[i]);
+    }
+}
+
+
+int update_connected_stations_counters(amxb_bus_ctx_t *bus_ctx_usp){
     printf("GET CONNECTED STATIONS\n");
 
     /*Vars declaration*/
     amxc_var_t args;
     amxc_var_t ret;
-    amxb_invoke_t* invoke_ctx = NULL;
     time_t rawtime;
     struct tm * timeinfo;
     int retval = 0;
-    char stats_str[BUFF_SIZE];
-    stats_str[0] =  '\0';
 
     /*Result files array*/
     const char *bands[] = { 
@@ -244,9 +211,6 @@ int get_connected_stations(amxb_bus_ctx_t *bus_ctx_usp){
     /*Init args*/
     amxc_var_init(&args);
     amxc_var_init(&ret); 
-    connected_stations_2GHz=0;
-    connected_stations_5GHz=0;
-    connected_stations_6GHz=0;
 
     /*Get Current time*/   
     time ( &rawtime );
@@ -255,10 +219,6 @@ int get_connected_stations(amxb_bus_ctx_t *bus_ctx_usp){
     timeinfo_str[strlen(timeinfo_str) -1] = '\0';
     char *timestmp = strcat(timeinfo_str, ",");
 
-    /*Append timestamp header*/
-    char *ts_header = "{timestamp:";
-    strcat(stats_str, ts_header);
-
     /*Loop over the wifi bands*/
     for(int i=0; i<3; i++){
     
@@ -266,7 +226,6 @@ int get_connected_stations(amxb_bus_ctx_t *bus_ctx_usp){
         retval = amxb_call(bus_ctx_usp, bands_cmd_arr[i], "getStationStats", &args, &ret, 5);
         if (retval != 0) {
             printf("RPC Error: Error in RPC execution\n");
-            amxb_free_invoke(&invoke_ctx);
             amxc_var_clean(&args);
             amxc_var_clean(&ret);
             return -1;
@@ -281,24 +240,16 @@ int get_connected_stations(amxb_bus_ctx_t *bus_ctx_usp){
                 continue;
             }
 
-            char *stations_list_str = amxc_var_dyncast(cstring_t, var);            
-            if(strlen(stations_list_str) > 10){
-                retval = dump_connected_stations_results(stations_list_str, bands[i], timestmp);
-                if (retval != 0) {
-                    printf("Error in reults dump\n");
-                }
-            }
+            /*Remove non active stations from list*/
+            purge_inactive_stations(var, bands[i]);
+
+            /*Append connected stations to list*/
+            update_connected_stations_list(var, bands[i]);
         }        
 
         /*Clean variables*/
-        amxb_free_invoke(&invoke_ctx);
         amxc_var_clean(&args);
         amxc_var_clean(&ret);
         retval = 0;
-    }
-
-    retval = dump_connected_stations_nb(timestmp);
-    if (retval != 0) {
-        printf("Error in number of connected stations reults dump\n");
-    }
+    }    
 }
