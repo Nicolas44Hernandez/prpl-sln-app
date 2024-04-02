@@ -8,7 +8,6 @@
 #include <amxd/amxd_object.h>
 
 
-
 /* Band counters struct */
 struct bandCounters {
     double tx_MBs_0;
@@ -168,13 +167,11 @@ void appendNewSample(BandCounters* band_counters, Sample* sample){
         printf("DELTATIME:%d  DELTA_TX_BYTES:%d   DELTA_RX_BYTES:%d\n", deltatime, delta_tx_bytes, delta_rx_bytes);
 
         /* Calculate traffic from sample*/
-        //TODO: Mbps
         double tx_MBs_sample = (double)(delta_tx_bytes * 8 )/ (deltatime * 1000000); 
         double rx_MBs_sample = (double)(delta_rx_bytes * 8 ) / (deltatime * 1000000);
         printf("CALCULATED TX_MBs_SAMPLE:%f  RX_MBs_SAMPLE:%f\n", tx_MBs_sample, rx_MBs_sample);
         
         /* Append calculated values to counters*/
-
         switch ( band_counters->nb_of_samples ) {
             case 1:
                 band_counters->tx_MBs_0 = tx_MBs_sample;
